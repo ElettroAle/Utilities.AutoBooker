@@ -11,29 +11,48 @@ EdgeDriver scraper;
 
 PrepareDrivers();
 
-// ++++ Core Logic ++++
-while (true)
+try
 {
-    if (WaitingForOpening())
+    // ++++ Core Logic ++++
+    while (true)
     {
-        RefreshPage();
-    }
-    else
-    {
-        SaveSourceCode();
-        TakeScreenShoot();
-        DownloadPage();
-        ReenableDownloader();
+        if (WaitingForOpening())
+        {
+            RefreshPage();
+        }
+        else
+        {
+            SaveSourceCode();
+            DownloadPage();
+            WaitAFewTime(1000);
+            TakeScreenShoot();
+            ReenableDownloader();
 
-        if (TheSeatsHaveEnded())
-            break;
+            if (TheSeatsHaveEnded())
+            {
+                WaitingForUserThatRealizesItsEnded();
+                break;
+            }
+
+            WaitAFewTime(5000);
+            RefreshPage();
+        }
+        KeepScreenOn();
+        WaitAFewTime(100);
+        iterations++;
     }
-    WaitAFewTime();
-    iterations++;
+    // ++++ End Core Logic ++++
 }
-// ++++ End Core Logic ++++
+catch (Exception ex)
+{
+    LogException(ex);
+}
+finally
+{
+    CloseAllDrivers();
+    SayTaskFinished();
+}
 
-SayTaskFinished();
 
 void PrepareDrivers()
 {
@@ -65,7 +84,6 @@ void RefreshPage()
 {
     scraper.Navigate().Refresh();
 }
-
 void TakeScreenShoot()
 {
     var screenshot = ((ITakesScreenshot)scraper).GetScreenshot();
@@ -76,7 +94,6 @@ void TakeScreenShoot()
 
     screenshot.SaveAsFile($"{folder}/{iterations}.png");
 }
-
 void SaveSourceCode()
 {
     string folder = $"c/{sessionId}";
@@ -85,10 +102,10 @@ void SaveSourceCode()
 
     File.WriteAllText($"{folder}/{iterations}.html", scraper.PageSource);
 }
-
 void DownloadPage()
-    => downloader.FindElement(By.ClassName("main-form__btn")).Click();
-
+{
+    downloader.FindElement(By.ClassName("main-form__btn")).Click();
+}
 void ReenableDownloader()
 {
     while (true)
@@ -105,15 +122,33 @@ void ReenableDownloader()
         }
     }
 }
-
+static void KeepScreenOn()
+{
+    // TODO: keep screen on
+}
+static void WaitAFewTime(int ms)
+{
+    Thread.Sleep(ms);
+}
+static void LogException(Exception ex)
+{
+    Console.ForegroundColor = ConsoleColor.Red;
+    Console.WriteLine(ex);
+    Console.ResetColor();
+}
 static void SayTaskFinished()
 {
     Console.WriteLine("Done!");
     Console.WriteLine("Press any key to exit...");
-    Console.ReadKey();
+}
+void CloseAllDrivers()
+{
+    scraper?.Quit();
+    downloader?.Quit();
 }
 
-static void WaitAFewTime()
+static void WaitingForUserThatRealizesItsEnded()
 {
-    Thread.Sleep(100);
+    Console.WriteLine("The seats have ended!");
+    Console.ReadKey();
 }
